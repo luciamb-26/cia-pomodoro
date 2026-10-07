@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CÍA · Pomodoro + Cronómetro</title>
+  <style>
+    :root{
+      --ink:#1d1d1b;
+      --pomo-bg:#fff2f8;
+      --stop-bg:#fdfcfa;
+    }
+
+    *{box-sizing:border-box}
+
+    html,body{
+      margin:0;
+      min-height:100%;
+      background:transparent;
+      color:var(--ink);
+      font-family:Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:10px;
+    }
+
+    .widget{
+      width:min(100%, 760px);
+      border-radius:24px;
+      background:var(--pomo-bg);
+      overflow:hidden;
+    }
+
+    .inner{
+      padding:24px;
+    }
+
+    .tabs{
+      display:flex;
+      gap:8px;
+      margin-bottom:20px;
+      flex-wrap:wrap;
+    }
+
+    .tab{
+      border:1px solid var(--ink);
+      background:transparent;
+      color:var(--ink);
+      border-radius:999px;
+      padding:8px 14px;
+      font:inherit;
+      cursor:pointer;
+      box-shadow:none;
+    }
+
+    .tab.active{
+      background:var(--ink);
+      color:#fff;
+    }
+
+    .mode-title{
+      font-size:14px;
+      opacity:.7;
+      margin-bottom:6px;
+    }
+
+    .time{
+      font-size:clamp(58px, 12vw, 104px);
+      font-weight:600;
+      line-height:1;
+      letter-spacing:-.06em;
+      font-variant-numeric:tabular-nums;
+      margin:0 0 22px;
+    }
+
+    .controls{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .ctrl{
+      width:64px;
+      height:64px;
+      border-radius:50%;
+      border:1px solid var(--ink);
+      background:transparent;
+      color:var(--ink);
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      padding:0;
+      box-shadow:none;
+      outline:none;
+      appearance:none;
+      -webkit-appearance:none;
+    }
+
+    .ctrl:hover{
+      background:rgba(29,29,27,.04);
+    }
+
+    .ctrl:active{
+      transform:scale(.98);
+    }
+
+    .ctrl svg{
+      width:24px;
+      height:24px;
+      display:block;
+      stroke:currentColor;
+      fill:none;
+      stroke-width:1.8;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .ctrl.play svg{
+      width:22px;
+      height:22px;
+    }
+
+    .ctrl.play .filled{
+      fill:currentColor;
+      stroke:none;
+    }
+
+    .ctrl.pause .bar{
+      fill:currentColor;
+      stroke:none;
+    }
+
+    .settings{
+      display:none;
+      gap:12px;
+      align-items:end;
+      flex-wrap:wrap;
+      margin-top:20px;
+      padding-top:18px;
+      border-top:1px solid rgba(29,29,27,.15);
+    }
+
+    .settings.show{display:flex}
+
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+
+    label{
+      font-size:12px;
+      opacity:.7;
+    }
+
+    input{
+      width:96px;
+      border:1px solid rgba(29,29,27,.35);
+      background:transparent;
+      border-radius:10px;
+      padding:9px 10px;
+      color:var(--ink);
+      font:inherit;
+      outline:none;
+    }
+
+    .save{
+      border:1px solid var(--ink);
+      background:transparent;
+      color:var(--ink);
+      border-radius:999px;
+      padding:9px 14px;
+      font:inherit;
+      cursor:pointer;
+      box-shadow:none;
+    }
+
+    .status{
+      margin-top:14px;
+      font-size:13px;
+      opacity:.62;
+    }
+
+    @media (max-width:520px){
+      .inner{padding:18px}
+      .ctrl{width:58px;height:58px}
+    }
+  </style>
+</head>
+<body>
+  <main class="widget" id="widget">
+    <div class="inner">
+      <div class="tabs">
+        <button class="tab active" data-mode="pomodoro">Pomodoro</button>
+        <button class="tab" data-mode="stopwatch">Cronómetro</button>
+      </div>
+
+      <div class="mode-title" id="modeTitle">Focus</div>
+      <div class="time" id="time">25:00</div>
+
+      <div class="controls">
+        <button class="ctrl play" id="playBtn" aria-label="Iniciar o pausar">
+          <svg id="playIcon" viewBox="0 0 24 24" aria-hidden="true">
+            <path class="filled" id="playShape" d="M8 6.5L18 12L8 17.5Z"></path>
+          </svg>
+        </button>
+
+        <button class="ctrl" id="resetBtn" aria-label="Reiniciar">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 8H3.5V4.5"></path>
+            <path d="M4 8a8 8 0 1 1 2.3 8.7"></path>
+          </svg>
+        </button>
+
+        <button class="ctrl" id="settingsBtn" aria-label="Ajustes">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <line x1="5" y1="7" x2="19" y2="7"></line>
+            <circle cx="9" cy="7" r="2"></circle>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <circle cx="15" cy="12" r="2"></circle>
+            <line x1="5" y1="17" x2="19" y2="17"></line>
+            <circle cx="11" cy="17" r="2"></circle>
+          </svg>
+        </button>
+      </div>
+
+      <div class="settings" id="settingsPanel">
+        <div class="field">
+          <label for="focusMinutes">Focus (min)</label>
+          <input id="focusMinutes" type="number" min="1" max="180" value="25">
+        </div>
+        <div class="field">
+          <label for="breakMinutes">Break (min)</label>
+          <input id="breakMinutes" type="number" min="1" max="60" value="5">
+        </div>
+        <button class="save" id="saveSettings">Guardar</button>
+      </div>
+
+      <div class="status" id="status">25 min de concentración · 5 min de descanso</div>
+    </div>
+  </main>
+
+  <script>
+    const widget = document.getElementById('widget');
+    const timeEl = document.getElementById('time');
+    const modeTitle = document.getElementById('modeTitle');
+    const statusEl = document.getElementById('status');
+    const playBtn = document.getElementById('playBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsPanel = document.getElementById('settingsPanel');
+    const saveSettings = document.getElementById('saveSettings');
+    const focusInput = document.getElementById('focusMinutes');
+    const breakInput = document.getElementById('breakMinutes');
+    const tabs = [...document.querySelectorAll('.tab')];
+
+    let appMode = 'pomodoro';
+    let pomoPhase = 'focus';
+    let running = false;
+    let timer = null;
+
+    let focusMin = 25;
+    let breakMin = 5;
+    let remaining = focusMin * 60;
+    let stopwatchSeconds = 0;
+
+    function fmt(totalSeconds){
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+
+      if (hours > 0) {
+        return `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+      }
+      return `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+    }
+
+    function setPlayIcon(){
+      const svg = playBtn.querySelector('svg');
+
+      if(running){
+        playBtn.classList.remove('play');
+        playBtn.classList.add('pause');
+        svg.innerHTML = '<rect class="bar" x="7" y="6.2" width="3.8" height="11.6" rx="0.8"></rect><rect class="bar" x="13.2" y="6.2" width="3.8" height="11.6" rx="0.8"></rect>';
+      }else{
+        playBtn.classList.remove('pause');
+        playBtn.classList.add('play');
+        svg.innerHTML = '<path class="filled" d="M8 6.5L18 12L8 17.5Z"></path>';
+      }
+    }
+
+    function render(){
+      if(appMode === 'pomodoro'){
+        widget.style.background = 'var(--pomo-bg)';
+        timeEl.textContent = fmt(remaining);
+        modeTitle.textContent = pomoPhase === 'focus' ? 'Focus' : 'Break';
+        statusEl.textContent = `${focusMin} min de concentración · ${breakMin} min de descanso`;
+        settingsBtn.style.display = 'grid';
+      }else{
+        widget.style.background = 'var(--stop-bg)';
+        timeEl.textContent = fmt(stopwatchSeconds);
+        modeTitle.textContent = 'Cronómetro';
+        statusEl.textContent = 'Cronómetro';
+        settingsBtn.style.display = 'none';
+        settingsPanel.classList.remove('show');
+      }
+      setPlayIcon();
+    }
+
+    function stopTimer(){
+      running = false;
+      if(timer) clearInterval(timer);
+      timer = null;
+      render();
+    }
+
+    function startTimer(){
+      if(running) return;
+      running = true;
+      render();
+
+      timer = setInterval(() => {
+        if(appMode === 'pomodoro'){
+          if(remaining > 0){
+            remaining--;
+          }else{
+            pomoPhase = pomoPhase === 'focus' ? 'break' : 'focus';
+            remaining = (pomoPhase === 'focus' ? focusMin : breakMin) * 60;
+          }
+        }else{
+          stopwatchSeconds++;
+        }
+        render();
+      },1000);
+    }
+
+    playBtn.addEventListener('click', () => {
+      running ? stopTimer() : startTimer();
+    });
+
+    resetBtn.addEventListener('click', () => {
+      stopTimer();
+      if(appMode === 'pomodoro'){
+        pomoPhase = 'focus';
+        remaining = focusMin * 60;
+      }else{
+        stopwatchSeconds = 0;
+      }
+      render();
+    });
+
+    settingsBtn.addEventListener('click', () => {
+      settingsPanel.classList.toggle('show');
+    });
+
+    saveSettings.addEventListener('click', () => {
+      focusMin = Math.max(1, parseInt(focusInput.value || 25, 10));
+      breakMin = Math.max(1, parseInt(breakInput.value || 5, 10));
+      stopTimer();
+      pomoPhase = 'focus';
+      remaining = focusMin * 60;
+      settingsPanel.classList.remove('show');
+      render();
+    });
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        stopTimer();
+        appMode = tab.dataset.mode;
+        tabs.forEach(t => t.classList.toggle('active', t === tab));
+
+        if(appMode === 'pomodoro'){
+          pomoPhase = 'focus';
+          remaining = focusMin * 60;
+        }else{
+          stopwatchSeconds = 0;
+        }
+        render();
+      });
+    });
+
+    render();
+  </script>
+</body>
+</html>
